@@ -2,12 +2,12 @@ import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js
 const conf=window.WOCHENKOCH_SUPABASE||{};
 const enabled=/^https:\/\/[a-z0-9-]+\.supabase\.co\/?$/.test(conf.url||'')&&!!conf.publishableKey;
 const client=enabled?createClient(conf.url,conf.publishableKey,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}}):null;
-let user=null;
+let user=null;let ready=false;
 const listeners=new Set();
 function notify(){for(const f of listeners)f(user)}
 function fail(e){throw Error(e?.message||'Unbekannter Fehler')}
-async function init(){if(!client)return;const {data,error}=await client.auth.getUser();if(!error)user=data.user;notify();client.auth.onAuthStateChange((_event,session)=>{user=session?.user||null;notify()})}
-const cloud={enabled, get user(){return user}, subscribe(fn){listeners.add(fn);fn(user);return()=>listeners.delete(fn)},
+async function init(){if(!client)return;const {data,error}=await client.auth.getUser();if(!error)user=data.user;ready=true;notify();client.auth.onAuthStateChange((_event,session)=>{user=session?.user||null;notify()})}
+const cloud={enabled, get ready(){return ready}, get user(){return user}, subscribe(fn){listeners.add(fn);fn(user);return()=>listeners.delete(fn)},
  async signUp(email,password){if(!client)throw Error('Supabase ist noch nicht eingerichtet.');const {data,error}=await client.auth.signUp({email,password});if(error)fail(error);return data},
  async signIn(email,password){const {error}=await client.auth.signInWithPassword({email,password});if(error)fail(error)},
  async signOut(){const {error}=await client.auth.signOut();if(error)fail(error)},
