@@ -1,9 +1,11 @@
-Wochenkoch v0.3 – Regionale Preisbeobachtungen
+Wochenkoch v0.4 – GitHub Pages
 
-Einkaufsregion 93053 Regensburg, 7 Händler.
+Alle Dateien aus diesem ZIP direkt ins Hauptverzeichnis deines bestehenden GitHub-Repositories hochladen. Bestehende Dateien ersetzen. Wichtig: index.html, app.js und style.css müssen nebeneinander liegen. GitHub Pages: main / (root).
 
-Installation: Alle Dateien direkt ins Hauptverzeichnis deines GitHub-Pages-Repositories hochladen (bestehende Dateien ersetzen). Nach erfolgreichem GitHub-Actions-Lauf App neu öffnen.
+Neu: moderne iPhone-Oberfläche, feste Tab-Leiste, Start, Wochenplan, Einkaufen, Profil mit PLZ, Umkreis, sieben Händlern und lokaler Speicherung.
 
-Preise: Auf preise.html Barcode eingeben; Daten von Open Prices werden nach erkennbarer Nähe zu Regensburg und Datum sortiert. Ein PLZ-Treffer ist nur eine Übereinstimmung in gelieferten Standort-Metadaten, keine Geodistanzmessung. Fehlende Standortinformationen bleiben unbestätigt. Keine garantierten Live- oder Filialpreise. Eigene Preisnotizen bleiben im Browser gespeichert.
+Bestehende Daten aus wochenkoch-v1 und wochenkoch-prices-v2 bleiben im selben Browser erhalten.
 
-Hinweis: Open Prices Daten © Open Food Facts contributors, ODbL 1.0. Nutzung und Attribution beachten.
+Einschränkungen: kein echtes Benutzerkonto; Profil nur lokal; PLZ/Radius noch keine serverseitige Filialfilterung; Open Prices in preise.html ist nicht garantiert aktuell; Kosten basieren auf Demo- bzw. eigenen Preisen.
+
+Bei alter Anzeige: iPhone-Web-App vollständig schließen und neu öffnen, ggf. Safari-Websitedaten aktualisieren (Vorsicht: kann lokale Daten löschen).

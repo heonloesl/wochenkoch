@@ -1,1 +1,1 @@
-{"name":"Wochenkoch – Privat","short_name":"Wochenkoch","start_url":"./","display":"standalone","background_color":"#f6f8f5","theme_color":"#166b4b","lang":"de","icons":[{"src":"icon.svg","sizes":"any","type":"image/svg+xml","purpose":"any maskable"}]}
+{"name": "Wochenkoch – Dein Essensplan", "short_name": "Wochenkoch", "start_url": "./", "scope": "./", "display": "standalone", "background_color": "#f7f8f6", "theme_color": "#f7f8f6", "lang": "de", "icons": [{"src": "./icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any"}]}
