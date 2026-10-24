@@ -1,11 +1,9 @@
-WOCHENKOCH 0.1 – PRIVATE PWA
+Wochenkoch v0.3 – Regionale Preisbeobachtungen
 
-1. ZIP entpacken.
-2. Unter Windows zum Testen: Im entpackten Ordner eine Konsole öffnen und `py -m http.server 8000` ausführen. Dann http://localhost:8000 im PC-Browser öffnen.
-3. Für das iPhone: den gesamten Inhalt des Ordners auf einen statischen HTTPS-Webhost hochladen (z.B. GitHub Pages oder Netlify). Es gibt noch keinen öffentlich bereitgestellten Link.
-4. HTTPS-Adresse in Safari auf dem iPhone öffnen, Teilen > Zum Home-Bildschirm > Als Web-App öffnen > Hinzufügen.
-5. Daten werden im lokalen Browser-Speicher gespeichert. Browserdaten löschen oder Wechsel des Geräts löscht ggf. den Plan.
+Einkaufsregion 93053 Regensburg, 7 Händler.
 
-WICHTIG: Alle Preise sind ERFUNDENE DEMOPREISE. Keine Händler-API oder Live-Preisabfrage ist implementiert. Kein Abgleich mit Allergenen. Enthalten sind nur Abendessen.
+Installation: Alle Dateien direkt ins Hauptverzeichnis deines GitHub-Pages-Repositories hochladen (bestehende Dateien ersetzen). Nach erfolgreichem GitHub-Actions-Lauf App neu öffnen.
 
-Dateien: index.html (App), manifest.webmanifest (Installation), sw.js (Offline-Cache), icon.svg (App-Symbol).
+Preise: Auf preise.html Barcode eingeben; Daten von Open Prices werden nach erkennbarer Nähe zu Regensburg und Datum sortiert. Ein PLZ-Treffer ist nur eine Übereinstimmung in gelieferten Standort-Metadaten, keine Geodistanzmessung. Fehlende Standortinformationen bleiben unbestätigt. Keine garantierten Live- oder Filialpreise. Eigene Preisnotizen bleiben im Browser gespeichert.
+
+Hinweis: Open Prices Daten © Open Food Facts contributors, ODbL 1.0. Nutzung und Attribution beachten.
