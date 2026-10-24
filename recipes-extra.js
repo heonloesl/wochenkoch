@@ -276,3 +276,151 @@ window.WochenkochExtraRecipes = [
     steps: 'Reis kochen. Hähnchen vollständig durchbraten, Gemüse zugeben und mit Reis vermischen.'
   }
 ];
+
+
+
+/* WOCHENKOCH – 60 WEITERE REZEPTE */
+
+(function () {
+  const extra = window.WochenkochExtraRecipes || [];
+
+  const data = [
+    // Nudeln
+    ['Pasta mit Paprika-Käsesoße',1,{pasta:110,pepper:160,cheese:45,milk:90}],
+    ['Pasta mit Kichererbsen-Tomaten',1,{pasta:100,chickpea:120,tomato:180,onion:40}],
+    ['Pasta mit Karotten-Tomatensoße',1,{pasta:110,carrot:130,tomato:180,onion:50}],
+    ['Pasta mit Bohnenragout',1,{pasta:100,beans:140,tomato:170,onion:50}],
+    ['Pasta mit Brokkoli und Ei',1,{pasta:100,broccoli:170,egg:2,cheese:25}],
+    ['Pasta mit Spinat und Kichererbsen',1,{pasta:100,spinach:150,chickpea:120}],
+    ['Pasta mit Linsen und Paprika',1,{pasta:100,lentil:75,pepper:130,tomato:120}],
+    ['Pasta mit cremiger Karottensoße',1,{pasta:110,carrot:180,milk:100,cheese:35}],
+    ['Pasta mit Mais und Tomaten',1,{pasta:110,corn:100,tomato:170,onion:40}],
+    ['Pasta mit Hähnchen und Spinat',0,{pasta:100,chicken:170,spinach:150,milk:70}],
+
+    // Reis
+    ['Reis mit Linsen und Zwiebeln',1,{rice:90,lentil:90,onion:100,carrot:70}],
+    ['Reis mit cremigem Spinat',1,{rice:100,spinach:190,milk:90,cheese:30}],
+    ['Reis mit Bohnen und Käse',1,{rice:90,beans:150,cheese:45,tomato:120}],
+    ['Reis mit Paprika und Ei',1,{rice:100,pepper:140,egg:2,onion:40}],
+    ['Reis mit Karotten und Kichererbsen',1,{rice:90,carrot:160,chickpea:130}],
+    ['Reis mit Brokkoli und Ei',1,{rice:90,broccoli:180,egg:2}],
+    ['Tomatenreis mit Mais',1,{rice:100,tomato:180,corn:100,onion:50}],
+    ['Reis mit Linsen-Tomatensoße',1,{rice:85,lentil:90,tomato:180}],
+    ['Reis mit Hähnchen und Karotten',0,{rice:90,chicken:170,carrot:150,onion:40}],
+    ['Reis mit Hähnchen und Bohnen',0,{rice:85,chicken:160,beans:120,tomato:100}],
+
+    // Kartoffeln
+    ['Kartoffel-Bohnen-Pfanne',1,{potato:280,beans:150,onion:60,tomato:120}],
+    ['Kartoffel-Mais-Gratin',1,{potato:280,corn:100,cheese:65,milk:90}],
+    ['Kartoffel-Linsen-Suppe',1,{potato:220,lentil:90,carrot:100,onion:50}],
+    ['Kartoffeln mit Brokkoli-Joghurt',1,{potato:300,broccoli:170,yogurt:130}],
+    ['Kartoffel-Kichererbsen-Curry',1,{potato:220,chickpea:140,tomato:160}],
+    ['Kartoffel-Paprika-Gratin',1,{potato:260,pepper:150,cheese:60,milk:80}],
+    ['Kartoffel-Spinat-Pfanne mit Ei',1,{potato:240,spinach:150,egg:2}],
+    ['Kartoffel-Karotten-Omelett',1,{potato:220,carrot:120,egg:2,onion:40}],
+    ['Kartoffel-Hähnchen-Pfanne',0,{potato:260,chicken:180,pepper:130}],
+    ['Kartoffel-Hähnchen-Gratin',0,{potato:240,chicken:170,cheese:55,milk:90}],
+
+    // Couscous und Hülsenfrüchte
+    ['Couscous mit Mais und Paprika',1,{couscous:100,corn:100,pepper:140}],
+    ['Couscous mit Linsen',1,{couscous:80,lentil:90,carrot:110}],
+    ['Couscous mit Brokkoli',1,{couscous:100,broccoli:190,yogurt:80}],
+    ['Couscous mit Bohnen und Tomaten',1,{couscous:90,beans:140,tomato:150}],
+    ['Couscous mit Ei und Spinat',1,{couscous:90,egg:2,spinach:150}],
+    ['Linsen mit Ofenkarotten',1,{lentil:100,carrot:200,yogurt:100}],
+    ['Linsen-Brokkoli-Eintopf',1,{lentil:100,broccoli:180,potato:160}],
+    ['Bohnen mit Kartoffelwürfeln',1,{beans:160,potato:250,onion:60}],
+    ['Kichererbsen mit Spinat und Reis',1,{chickpea:140,spinach:160,rice:80}],
+    ['Kichererbsen mit Brokkoli',1,{chickpea:160,broccoli:180,tomato:120}],
+
+    // Wraps
+    ['Kartoffel-Ei-Wraps',1,{wrap:2,potato:180,egg:2,yogurt:60}],
+    ['Mais-Bohnen-Wraps',1,{wrap:2,corn:100,beans:130,tomato:100}],
+    ['Brokkoli-Käse-Wraps',1,{wrap:2,broccoli:150,cheese:55}],
+    ['Linsen-Wraps mit Joghurt',1,{wrap:2,lentil:90,carrot:100,yogurt:80}],
+    ['Kichererbsen-Paprika-Wraps',1,{wrap:2,chickpea:140,pepper:130}],
+    ['Hähnchen-Mais-Wraps',0,{wrap:2,chicken:160,corn:90,yogurt:70}],
+    ['Hähnchen-Spinat-Wraps',0,{wrap:2,chicken:160,spinach:130,yogurt:60}],
+    ['Hähnchen-Brokkoli-Wraps',0,{wrap:2,chicken:160,broccoli:140,cheese:35}],
+    ['Ei-Käse-Wraps',1,{wrap:2,egg:2,cheese:50}],
+    ['Bohnen-Spinat-Wraps',1,{wrap:2,beans:130,spinach:140,yogurt:60}],
+
+    // Aufläufe und Pfannen
+    ['Brokkoli-Reis-Auflauf mit Ei',1,{broccoli:180,rice:85,egg:2,cheese:40}],
+    ['Linsen-Käse-Auflauf',1,{lentil:100,tomato:160,cheese:65}],
+    ['Paprika-Kartoffel-Auflauf',1,{pepper:170,potato:260,milk:80,cheese:55}],
+    ['Spinat-Kichererbsen-Auflauf',1,{spinach:170,chickpea:150,cheese:55}],
+    ['Gemüse-Eier-Auflauf',1,{egg:3,pepper:120,broccoli:130,cheese:35}],
+    ['Hähnchen-Reis-Auflauf',0,{chicken:180,rice:85,broccoli:130,cheese:45}],
+    ['Hähnchen-Nudelauflauf',0,{chicken:170,pasta:95,tomato:140,cheese:55}],
+    ['Hähnchen-Paprika-Gratin',0,{chicken:180,pepper:170,milk:90,cheese:50}],
+    ['Linsen-Karotten-Pfanne mit Ei',1,{lentil:90,carrot:150,egg:2}],
+    ['Bohnen-Brokkoli-Pfanne',1,{beans:150,broccoli:180,onion:50}]
+  ];
+
+  function instructions(name, items) {
+    const keys = Object.keys(items);
+
+    if (keys.includes('chicken')) {
+      return 'Hähnchen vollständig durchgaren. Weitere Zutaten je nach Art vorkochen oder anbraten und alles zusammen fertig garen. Nach Geschmack würzen.';
+    }
+
+    if (name.includes('Auflauf') || name.includes('Gratin')) {
+      return 'Kartoffeln, Reis, Nudeln oder Hülsenfrüchte gegebenenfalls vorgaren. Zutaten in eine Auflaufform geben und im Ofen vollständig garen.';
+    }
+
+    if (name.includes('Wraps')) {
+      return 'Füllung vorbereiten und vollständig garen. Wraps kurz erwärmen, füllen und servieren.';
+    }
+
+    if (keys.includes('lentil')) {
+      return 'Linsen in ausreichend Wasser weich kochen. Gemüse separat oder gemeinsam garen, alles vermengen und würzen.';
+    }
+
+    if (keys.includes('rice')) {
+      return 'Reis nach Packungsanleitung garen. Weitere Zutaten vorbereiten, vollständig garen und mit dem Reis vermengen.';
+    }
+
+    if (keys.includes('pasta')) {
+      return 'Nudeln nach Packungsanleitung kochen. Weitere Zutaten zu einer Soße oder Pfanne verarbeiten und mit den Nudeln vermengen.';
+    }
+
+    if (keys.includes('potato')) {
+      return 'Kartoffeln in Stücke schneiden und vollständig garen. Weitere Zutaten vorbereiten und alles zusammen servieren.';
+    }
+
+    if (keys.includes('couscous')) {
+      return 'Couscous nach Packungsanleitung quellen lassen. Weitere Zutaten vollständig garen und untermischen.';
+    }
+
+    return 'Gemüse und weitere Zutaten vorbereiten, vollständig garen, nach Geschmack würzen und servieren.';
+  }
+
+  const more = data.map(([name, veg, items]) => ({
+    name,
+    veg: Boolean(veg),
+    items,
+    steps: instructions(name, items)
+  }));
+
+  // Bereits vorhandene Rezeptnamen nicht doppelt hinzufügen.
+  const existingNames = new Set(
+    extra.map(recipe => recipe.name.toLowerCase())
+  );
+
+  for (const recipe of more) {
+    if (!existingNames.has(recipe.name.toLowerCase())) {
+      extra.push(recipe);
+      existingNames.add(recipe.name.toLowerCase());
+    }
+  }
+
+  // Beide bisher verwendeten App-Versionen unterstützen.
+  window.WochenkochExtraRecipes = extra;
+  window.WOCHENKOCH_EXTRA_RECIPES = extra;
+
+  console.info(
+    'Wochenkoch: ' + extra.length +
+    ' Zusatzrezepte geladen.'
+  );
+})();
