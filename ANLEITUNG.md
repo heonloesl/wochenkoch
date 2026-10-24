@@ -1,14 +1,14 @@
-# Wochenkoch – Anmeldung verpflichtend
+# Wochenkoch: Kassenzettel einlesen
 
-1. `config.js` mit der **Supabase Project URL** (`https://...supabase.co`, ohne `/rest/v1/`) und dem **Publishable Key** ausfüllen. Keine Secret Keys verwenden.
-2. Alle Dateien dieses Ordners direkt ins Hauptverzeichnis des GitHub-Repositories hochladen. Besonders `index.html`, `app.js`, `cloud.js`, `style.css`, `sw.js`, `config.js`.
-3. Nach dem GitHub-Pages-Deployment die Seite in einem privaten Browserfenster öffnen.
-4. Registrieren, E-Mail bestätigen, anmelden.
-5. Profil mit PLZ, Umkreis, Supermärkten, Ernährungsweise und Ausschlüssen speichern. Erst dann werden die anderen Bereiche freigeschaltet.
+## Installation
+1. ZIP entpacken und die App-Dateien in das GitHub-Repository `wochenkoch` hochladen (vorhandene Dateien ersetzen). **Die bestehende, ausgefüllte `config.js` nicht ersetzen.** Die ZIP enthält keine `config.js`.
+2. Im Supabase-Dashboard unter **SQL Editor** den Inhalt von `receipt-migration.sql` **einmal** ausführen. Dadurch wird die EAN für Belegprodukte optional; viele Kassenzettel enthalten keine EAN.
+3. GitHub Pages neu laden, ggf. Seite komplett schließen und erneut öffnen (Service Worker Cache).
+4. In der **Preiszentrale** einen Kassenzettel fotografieren/auswählen, Supermarkt und PLZ festlegen, **Foto lokal auslesen**, alle erkannten Zeilen prüfen und Packungsgrößen ergänzen. Erst nach Bestätigung werden ausgewählte Preiszeilen gespeichert.
 
-**Hinweis:** `schema.sql` wurde nicht verändert und muss nicht erneut ausgeführt werden, wenn die v0.5-Tabellen bereits angelegt wurden. Profil-Einstellungen liegen online, Wochenplan und Einkaufshäkchen derzeit nur lokal. Die Supermarkt- und PLZ-Angaben bewirken noch keine automatische Livepreis- oder Filialabfrage. Die Zugangssperre ist eine UI-Sperre; Datenzugriff wird zusätzlich durch Supabase-RLS geregelt.
-
-## E-Mail-Bestätigung (Fix)
-`cloud.js` übergibt bei der Registrierung ausdrücklich `emailRedirectTo` mit dem Pfad `/wochenkoch/`. Nach dem Hochladen eine **neue** Bestätigungs-E-Mail verwenden. Bereits verschickte Links behalten ihr altes Weiterleitungsziel.
-
-**Wichtig:** `config.js` in diesem ZIP ist eine Vorlage ohne Zugangsdaten. Beim Upload entweder die bisherige funktionierende `config.js` auf GitHub behalten und diese Datei **nicht** ersetzen, oder die öffentliche Project URL und den Publishable Key vorher erneut eintragen.
+## Datenschutz und Einschränkungen
+- Das Bild wird nur im Browser an die OCR-Bibliothek Tesseract.js übergeben und **nicht** in Supabase gespeichert. Tesseract.js wird beim ersten Einlesen über jsDelivr geladen; je nach Konfiguration werden Sprachmodelle aus externen CDNs bezogen. Für eine strikte Offline-/Datenschutzlösung die OCR-Bibliothek und Sprachmodelle selbst hosten und Datenschutzhinweise anpassen.
+- Gespeichert werden Produktname, Preis, Packungsgröße, optional EAN, Supermarkt, Geschäfts-PLZ und Datum; kein Belegbild und keine Zahlungsdaten.
+- OCR ist ungenau: insbesondere Rabatte, Pfand, Mehrfachmengen, Summen und mehrzeilige Belege müssen überprüft werden. Nicht erkannte Zeilen können manuell ergänzt werden. Jede Zeile benötigt eine Packungsgröße.
+- Die Funktion markiert alle gespeicherten Zeilen als **keine Aktion**; Sonderangebote auf Belegen müssen vor dem Übernehmen abgewählt werden, da das Belegformat keine verlässliche automatische Erkennung erlaubt.
+- Falls Preise nicht erscheinen, prüfen, ob die Benutzeranmeldung besteht und die SQL-Migration ausgeführt wurde.
