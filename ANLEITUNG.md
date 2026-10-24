@@ -7,3 +7,8 @@
 5. Profil mit PLZ, Umkreis, Supermärkten, Ernährungsweise und Ausschlüssen speichern. Erst dann werden die anderen Bereiche freigeschaltet.
 
 **Hinweis:** `schema.sql` wurde nicht verändert und muss nicht erneut ausgeführt werden, wenn die v0.5-Tabellen bereits angelegt wurden. Profil-Einstellungen liegen online, Wochenplan und Einkaufshäkchen derzeit nur lokal. Die Supermarkt- und PLZ-Angaben bewirken noch keine automatische Livepreis- oder Filialabfrage. Die Zugangssperre ist eine UI-Sperre; Datenzugriff wird zusätzlich durch Supabase-RLS geregelt.
+
+## E-Mail-Bestätigung (Fix)
+`cloud.js` übergibt bei der Registrierung ausdrücklich `emailRedirectTo` mit dem Pfad `/wochenkoch/`. Nach dem Hochladen eine **neue** Bestätigungs-E-Mail verwenden. Bereits verschickte Links behalten ihr altes Weiterleitungsziel.
+
+**Wichtig:** `config.js` in diesem ZIP ist eine Vorlage ohne Zugangsdaten. Beim Upload entweder die bisherige funktionierende `config.js` auf GitHub behalten und diese Datei **nicht** ersetzen, oder die öffentliche Project URL und den Publishable Key vorher erneut eintragen.

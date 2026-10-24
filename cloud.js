@@ -8,7 +8,7 @@ function notify(){for(const f of listeners)f(user)}
 function fail(e){throw Error(e?.message||'Unbekannter Fehler')}
 async function init(){if(!client)return;const {data,error}=await client.auth.getUser();if(!error)user=data.user;ready=true;notify();client.auth.onAuthStateChange((_event,session)=>{user=session?.user||null;notify()})}
 const cloud={enabled, get ready(){return ready}, get user(){return user}, subscribe(fn){listeners.add(fn);fn(user);return()=>listeners.delete(fn)},
- async signUp(email,password){if(!client)throw Error('Supabase ist noch nicht eingerichtet.');const {data,error}=await client.auth.signUp({email,password});if(error)fail(error);return data},
+ async signUp(email,password){if(!client)throw Error('Supabase ist noch nicht eingerichtet.');const {data,error}=await client.auth.signUp({email,password,options:{emailRedirectTo:new URL('./',window.location.href).origin+'/wochenkoch/'}});if(error)fail(error);return data},
  async signIn(email,password){const {error}=await client.auth.signInWithPassword({email,password});if(error)fail(error)},
  async signOut(){const {error}=await client.auth.signOut();if(error)fail(error)},
  async loadProfile(){if(!user)return null;const {data,error}=await client.from('profiles').select('postal_code,radius_km,stores,compare_mode,diet,excluded_ingredients,people,budget_eur,preferred_store').eq('user_id',user.id).maybeSingle();if(error)fail(error);return data},
