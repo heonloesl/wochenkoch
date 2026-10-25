@@ -178,6 +178,27 @@ let shopExtras = read('wochenkoch-shop-extras-v1', []);
 if (!Array.isArray(shopHidden)) shopHidden = [];
 if (!Array.isArray(shopExtras)) shopExtras = [];
 
+const MEALS = ['breakfast','lunch','dinner'];
+const MEAL_NAMES = {breakfast:'Frühstück',lunch:'Mittagessen',dinner:'Abendessen'};
+const FAVORITES_KEY = 'wochenkoch-favoriten-v1';
+let favorites = read(FAVORITES_KEY, []);
+if (!Array.isArray(favorites)) favorites = [];
+let librarySearch = '', libraryDiet = 'all', libraryCategory = 'all', libraryFavorites = false;
+if (!Array.isArray(state.meals) || !state.meals.length) state.meals = ['dinner'];
+function slots() {return DAYS.flatMap((_,day)=>state.meals.map(meal=>({day,meal})));}
+function recipeCategory(recipe) {
+  const c = recipe.category || '';
+  if (c === 'Dessert') return 'dessert';
+  if (c === 'Snack & Frühstück') return /Frühstück|Overnight|Hafer-Bowl|Mini-Pfannkuchen/i.test(recipe.name)?'breakfast':'snack';
+  if (/Porridge|Frühstück|Overnight|Rührei|Pfannkuchen|Joghurt-Snack/i.test(recipe.name)) return 'breakfast';
+  return 'main';
+}
+function mealMatch(recipe,meal) {
+  const c=recipeCategory(recipe);
+  return meal==='breakfast' ? c==='breakfast'||c==='snack' : c==='main';
+}
+function favorite(name){return favorites.includes(name);}
+function star(recipe){return `<button type="button" class="wk-star" data-favorite="${esc(recipe.name)}" aria-label="${favorite(recipe.name)?'Favorit entfernen':'Favorit speichern'}" aria-pressed="${favorite(recipe.name)}">${favorite(recipe.name)?'★':'☆'}</button>`;}
 let shopFilter = 'all';
 let tab = 'home';
 
@@ -261,7 +282,7 @@ function navigate(destination) {
     return;
   }
 
-  if (!['home', 'plan', 'shop', 'profile'].includes(destination)) {
+  if (!['home', 'plan', 'shop', 'profile', 'library'].includes(destination)) {
     return;
   }
 
@@ -423,51 +444,25 @@ function shopItems() {
 }
 
 function generate() {
-  const pool = recipes
-    .map((recipe, index) => index)
-    .filter(index => allowedRecipe(recipes[index]));
-
-  if (!pool.length) {
-    toast('Keine passenden Rezepte. Bitte Ausschlüsse anpassen.');
-    return;
+  const wanted=slots();
+  if(!wanted.length){toast('Bitte mindestens eine Mahlzeit wählen');return;}
+  const pools=wanted.map(slot=>recipes.map((r,i)=>i).filter(i=>allowedRecipe(recipes[i])&&mealMatch(recipes[i],slot.meal)));
+  if(pools.some(pool=>!pool.length)){toast('Für eine Mahlzeit fehlen passende Rezepte');return;}
+  let best=[],bestCost=Infinity;
+  for(let attempt=0;attempt<120;attempt++){
+    const used=new Set();
+    const candidate=pools.map(pool=>{
+      const options=pool.filter(i=>!used.has(i));
+      const choices=options.length?options:pool;
+      const index=choices[Math.floor(Math.random()*choices.length)];
+      used.add(index);return index;
+    });
+    state.plan=candidate;
+    const cost=total();
+    if(cost<bestCost){bestCost=cost;best=[...candidate];}
+    if(cost<=state.budget)break;
   }
-
-  let best = [];
-  let bestCost = Infinity;
-
-  for (let attempt = 0; attempt < 350; attempt++) {
-    const shuffled = [...pool];
-
-    for (let j = shuffled.length - 1; j > 0; j--) {
-      const k = Math.floor(Math.random() * (j + 1));
-
-      [shuffled[j], shuffled[k]] = [shuffled[k], shuffled[j]];
-    }
-
-    const proposedPlan = Array.from(
-      { length: 7 },
-      (_, index) => shuffled[index % shuffled.length]
-    );
-
-    state.plan = proposedPlan;
-
-    const cost = total();
-
-    if (cost < bestCost) {
-      bestCost = cost;
-      best = [...proposedPlan];
-    }
-
-    if (cost <= state.budget) break;
-  }
-
-  state.plan = best;
-  state.checks = {};
-  shopHidden = [];
-
-  saveShop();
-  save();
-  render();
+  state.plan=best;state.checks={};shopHidden=[];saveShop();save();render();
 }
 
 /* =====================================================
@@ -544,7 +539,7 @@ function home() {
 
       <div class="recipe-body">
         <div class="recipe-day">
-          Dein erster geplanter Abend
+          Dein erstes geplantes Gericht
         </div>
 
         <div class="recipe-name">
@@ -568,9 +563,8 @@ function home() {
         Einkaufsliste öffnen →
       </button>
 
-      <button class="btn alt full" data-go="prices">
-        Preiszentrale öffnen →
-      </button>
+      <button class="btn alt full" data-go="prices">Preiszentrale öffnen →</button>
+      <button class="btn alt full" data-go="library">Alle Rezepte entdecken →</button>
     </div>
 
     <div class="card">
@@ -608,7 +602,7 @@ function plan() {
     <h1 class="title">Deine Woche</h1>
 
     <p class="subtitle">
-      Sieben Ideen für entspannte Abende.
+      Dein kompletter Speiseplan – flexibel für jede Mahlzeit.
       ${recipes.length} Rezepte verfügbar.
     </p>
 
@@ -672,9 +666,10 @@ function plan() {
         </div>
       </div>
 
-      <p class="small muted">
-        7 Abendessen, keine Allergieprüfung.
-      </p>
+      <fieldset class="wk-meals"><legend>Mahlzeiten für alle 7 Tage</legend>
+        ${MEALS.map(meal=>`<label style="display:block;padding:8px"><input type="checkbox" data-meal="${meal}" ${state.meals.includes(meal)?'checked':''}> ${MEAL_NAMES[meal]}</label>`).join('')}
+      </fieldset>
+      <p class="small muted">Keine Allergieprüfung.</p>
 
       <button class="btn full" id="generate">
         Neue Woche planen ↻
@@ -683,7 +678,9 @@ function plan() {
 
     ${section('Alle Gerichte')}
 
-    ${state.plan.map((index, dayIndex) => {
+    ${state.plan.map((index, slotIndex) => {
+      const slot = slots()[slotIndex];
+      if(!slot)return '';
       const recipe = recipes[index];
 
       if (!recipe) return '';
@@ -697,7 +694,7 @@ function plan() {
 
             <div class="recipe-body">
               <div class="recipe-day">
-                ${DAYS[dayIndex]}
+                ${DAYS[slot.day]} · ${MEAL_NAMES[slot.meal]}
               </div>
 
               <div class="recipe-name">
@@ -705,13 +702,14 @@ function plan() {
               </div>
 
               <span class="small muted">
-                ${recipe.veg ? 'Vegetarisch' : 'Mit Fleisch'}
+                ${recipe.vegan?'Vegan':recipe.veg?'Vegetarisch':'Mit Fleisch'}
               </span>
             </div>
 
+            ${star(recipe)}
             <button
               class="link"
-              data-swap="${dayIndex}"
+              data-swap="${slotIndex}"
               aria-label="Gericht tauschen"
             >↻</button>
           </div>
@@ -1265,10 +1263,32 @@ function render() {
     home,
     plan,
     shop,
+    library,
     profile: profileView
   };
 
   content.innerHTML = (pages[tab] || home)();
+}
+
+function library(){
+  const shown=recipes.filter(r=>{
+    if(!allowedRecipe(r))return false;
+    if(libraryFavorites&&!favorite(r.name))return false;
+    if(libraryDiet==='vegan'&&!r.vegan&&Object.keys(r.items).some(k=>['chicken','egg','cheese','milk','yogurt'].includes(k)))return false;
+    if(libraryDiet==='vegetarian'&&!r.veg)return false;
+    if(libraryDiet==='meat'&&r.veg)return false;
+    if(libraryCategory!=='all'&&recipeCategory(r)!==libraryCategory)return false;
+    return r.name.toLocaleLowerCase('de').includes(librarySearch.toLocaleLowerCase('de'));
+  });
+  return `<div class="eyebrow">ENTDECKEN & MERKEN</div><h1 class="title">Alle Rezepte</h1>
+  <p class="subtitle">${shown.length} von ${recipes.length} Rezepten · ${favorites.length} Favoriten</p>
+  <div class="card wk-library-filters">
+  <label>Suche<input id="librarySearch" type="search" placeholder="Gericht suchen" value="${esc(librarySearch)}"></label>
+  <label>Ernährung<select id="libraryDiet">${[['all','Alle'],['vegetarian','Vegetarisch'],['vegan','Vegan'],['meat','Mit Fleisch']].map(([v,n])=>`<option value="${v}" ${libraryDiet===v?'selected':''}>${n}</option>`).join('')}</select></label>
+  <label>Kategorie<select id="libraryCategory">${[['all','Alle Kategorien'],['main','Hauptgerichte'],['breakfast','Frühstück'],['snack','Snacks'],['dessert','Desserts']].map(([v,n])=>`<option value="${v}" ${libraryCategory===v?'selected':''}>${n}</option>`).join('')}</select></label>
+  <label class="wk-only-favs"><input id="libraryFavorites" type="checkbox" ${libraryFavorites?'checked':''}> Nur meine Favoriten ⭐</label></div>
+  <div class="wk-library-results">${shown.slice(0,180).map(r=>`<div class="card wk-library-card"><div class="row"><div><strong>${esc(r.name)}</strong><div class="small muted">${r.vegan?'Vegan':r.veg?'Vegetarisch':'Mit Fleisch'} · ${recipeCategory(r)==='main'?'Hauptgericht':recipeCategory(r)==='breakfast'?'Frühstück':recipeCategory(r)==='dessert'?'Dessert':'Snack'}</div></div>${star(r)}</div><details class="expand"><summary>Rezept & Zutaten</summary><p>${esc(r.steps)}</p><ul>${Object.entries(r.items).map(([k,q])=>`<li>${esc(ingredients[k]?.name||k)}: ${q} ${ingredients[k]?.unit||''} pro Person</li>`).join('')}</ul></details></div>`).join('')||'<p>Keine passenden Rezepte.</p>'}</div>
+  ${shown.length>180?`<p class="small muted">Es werden die ersten 180 Treffer angezeigt. Bitte Suche oder Filter verwenden.</p>`:''}`;
 }
 
 /* =====================================================
@@ -1325,6 +1345,12 @@ document.addEventListener('click', async event => {
   const button = event.target.closest('button');
   if (!button) return;
 
+  if(button.dataset.favorite!==undefined){
+    const name=button.dataset.favorite;
+    favorites=favorite(name)?favorites.filter(n=>n!==name):[...favorites,name];
+    localStorage.setItem(FAVORITES_KEY,JSON.stringify(favorites));
+    render();return;
+  }
   if (button.dataset.shopfilter) {
     shopFilter = button.dataset.shopfilter;
     render();
@@ -1366,7 +1392,7 @@ document.addEventListener('click', async event => {
       .map((recipe, index) => index)
       .filter(index =>
         index !== state.plan[dayIndex] &&
-        allowedRecipe(recipes[index])
+        allowedRecipe(recipes[index]) && mealMatch(recipes[index],slots()[dayIndex]?.meal)
       );
 
     if (pool.length) {
@@ -1444,7 +1470,9 @@ document.addEventListener('click', async event => {
 
     state.store = $('store').value;
     state.diet = $('diet').value;
-
+    const chosen=[...document.querySelectorAll('[data-meal]:checked')].map(x=>x.dataset.meal);
+    if(!chosen.length){toast('Mindestens eine Mahlzeit auswählen');return;}
+    state.meals=chosen;
     generate();
     toast('Neuer Wochenplan erstellt');
     return;
@@ -1606,7 +1634,17 @@ document.addEventListener('touchend', event => {
   }
 }, { passive: true });
 
+document.addEventListener('input',event=>{
+  if(event.target.id==='librarySearch'){
+    librarySearch=event.target.value;
+    const start=event.target.selectionStart;
+    render();const input=$('librarySearch');input?.focus();input?.setSelectionRange(start,start);
+  }
+});
 document.addEventListener('change', event => {
+  if(event.target.id==='libraryDiet'){libraryDiet=event.target.value;render();return;}
+  if(event.target.id==='libraryCategory'){libraryCategory=event.target.value;render();return;}
+  if(event.target.id==='libraryFavorites'){libraryFavorites=event.target.checked;render();return;}
   const key = event.target.dataset.check;
 
   if (key) {
@@ -1702,6 +1740,7 @@ if (cloud()) {
 }
 
 if (
+  state.plan.length !== slots().length ||
   !state.plan.length ||
   state.plan.some(index => !recipes[index])
 ) {
