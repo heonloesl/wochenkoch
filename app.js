@@ -218,7 +218,7 @@ function wkRecipeCost(r){return Object.entries(r.items).reduce((sum,[k,q])=>{con
 function wkPlanBudgetTotal(){return total();}
 
 let shopFilter = 'all';
-let tab = 'home';
+let tab = ['home','plan','shop'].includes(location.hash.slice(1)) ? location.hash.slice(1) : 'home';
 
 let cloudUser = null;
 let profileCompleted = false;
@@ -486,27 +486,83 @@ function shopItems() {
   ];
 }
 
+// Diversitätsprüfung: Hauptbeilagen, Proteinquellen und wiederkehrende Zutaten.
+// Dies ist eine heuristische Planungshilfe, keine ernährungsmedizinische Bewertung.
+function wkRecipeTraits(recipe) {
+  const names=Object.keys(recipe.items||{}).map(k=>(ingredients[k]?.name||k).toLowerCase());
+  const text=names.join(' ')+' '+recipe.name.toLowerCase();
+  const group=(pattern)=>pattern.test(text);
+  let starch='other';
+  if(group(/kartoff|potato|süßkartoff/))starch='potato';
+  else if(group(/reis|rice/))starch='rice';
+  else if(group(/nudel|pasta|spaghetti|penne|spätzle|gnocchi/))starch='pasta';
+  else if(group(/couscous|bulgur|quinoa|hirse/))starch='grain';
+  else if(group(/brot|wrap|tortilla|toast/))starch='bread';
+  let protein='other';
+  if(group(/linsen|bohnen|kichererbsen|tofu|falafel|lentil|chickpea/))protein='legume';
+  else if(group(/fisch|lachs|thunfisch|garnel/))protein='fish';
+  else if(group(/hähn|huhn|pute|rind|schwein|hackfleisch|chicken/))protein='meat';
+  else if(group(/eier|\bei\b|\begg\b/))protein='egg';
+  else if(group(/käse|quark|joghurt|mozzarella|feta/))protein='dairy';
+  return {starch,protein,keys:Object.keys(recipe.items||{}),name:recipe.name.toLowerCase()};
+}
+function wkDiversityPenalty(indices) {
+  const counts={starch:{},protein:{},keys:{}};
+  let penalty=0;
+  for(const i of indices){
+    const t=wkRecipeTraits(recipes[i]);
+    for(const [type,val] of [['starch',t.starch],['protein',t.protein]]){
+      if(val==='other')continue;
+      const n=counts[type][val]||0;
+      penalty+=n*(type==='starch'?14:7);
+      if(type==='starch'&&n>=2)penalty+=22;
+      counts[type][val]=n+1;
+    }
+    for(const key of t.keys){
+      const n=counts.keys[key]||0;
+      // Alltagszutaten wie Zwiebeln, Öl und Gewürze dürfen häufiger vorkommen.
+      if(!/onion|zwiebel|oil|öl|salz|pfeffer|wasser|tomato|tomate/i.test(key)) penalty+=Math.max(0,n-1)*1.5;
+      counts.keys[key]=n+1;
+    }
+  }
+  return penalty;
+}
 function generate() {
   const wanted=slots();
   if(!wanted.length){toast('Bitte mindestens eine Mahlzeit wählen');return;}
   const pools=wanted.map(slot=>recipes.map((r,i)=>i).filter(i=>allowedRecipe(recipes[i])&&mealMatch(recipes[i],slot.meal)));
   if(pools.some(pool=>!pool.length)){toast('Für eine Mahlzeit fehlen passende Rezepte');return;}
-  let best=[],bestCost=Infinity;
-  for(let attempt=0;attempt<120;attempt++){
-    const used=new Set();
-    const candidate=pools.map(pool=>{
-      const options=pool.filter(i=>!used.has(i));
-      const fresh=wkAvoidRepeat?options.filter(i=>!wkHistory.includes(recipes[i].name)):options;
-      const choices=fresh.length?fresh:(options.length?options:pool);
-      const index=choices[Math.floor(Math.random()*choices.length)];
-      used.add(index);return index;
-    });
+  const previous=state.plan;
+  let best=[],bestScore=Infinity;
+  const budget=Number(state.budget)||0;
+  // Statt beim ersten günstigen Plan abzubrechen werden viele vielfältige
+  // Kombinationen bewertet. Der Budgetwert bleibt Teil der Bewertung.
+  for(let attempt=0;attempt<260;attempt++){
+    const used=new Set();const candidate=[];
+    for(let s=0;s<pools.length;s++){
+      const pool=pools[s].filter(i=>!used.has(i));
+      const candidates=pool.length?pool:pools[s];
+      const fresh=wkAvoidRepeat?candidates.filter(i=>!wkHistory.includes(recipes[i].name)):candidates;
+      const available=fresh.length?fresh:candidates;
+      const sample=available.length>32?Array.from({length:32},()=>available[Math.floor(Math.random()*available.length)]):available;
+      let pick=sample[0],score=Infinity;
+      for(const i of sample){
+        const trial=[...candidate,i];
+        const p=wkDiversityPenalty(trial)+Math.random()*13;
+        if(p<score){score=p;pick=i;}
+      }
+      candidate.push(pick);used.add(pick);
+    }
     state.plan=candidate;
     const cost=total();
-    if(cost<bestCost){bestCost=cost;best=[...candidate];}
-    if(cost<=state.budget)break;
+    const over=budget>0?Math.max(0,cost-budget):0;
+    // Abwechslung zählt stark; bei Budgetüberschreitung gibt es eine Strafe.
+    const score=wkDiversityPenalty(candidate)+cost*0.65+over*7;
+    if(score<bestScore){bestScore=score;best=[...candidate];}
   }
-  state.plan=best;state.checks={};shopHidden=[];saveShop();save();render();
+  state.plan=best.length?best:previous;
+  state.checks={};shopHidden=[];saveShop();save();render();
+  toast('Wochenplan mit mehr Zutatenvielfalt erstellt');
 }
 
 /* =====================================================

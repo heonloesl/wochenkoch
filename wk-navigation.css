@@ -1,0 +1,6 @@
+/* Einheitliche untere Navigation, auch in der Preiszentrale */
+.tabs .wk-tab{border:0;background:none;text-decoration:none;color:#87958b;display:grid;justify-items:center;gap:3px;font-size:10px;font-weight:700;padding:4px;min-width:0}
+.tabs .wk-tab.active{color:#1e6246}
+.tabs .wk-tab.active .tabicon{background:#e5f2e8;border-radius:11px;padding:0 13px}
+.tabs .wk-tab:focus-visible{outline:3px solid #80b9a4;outline-offset:2px}
+@media(max-width:420px){.tabs{padding-left:5px;padding-right:5px}.tabs .wk-tab{font-size:10px}.top{padding-left:14px;padding-right:14px}}
