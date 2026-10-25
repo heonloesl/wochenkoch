@@ -200,6 +200,23 @@ function mealMatch(recipe,meal) {
 }
 function favorite(name){return favorites.includes(name);}
 function star(recipe){return `<button type="button" class="wk-star" data-favorite="${esc(recipe.name)}" aria-label="${favorite(recipe.name)?'Favorit entfernen':'Favorit speichern'}" aria-pressed="${favorite(recipe.name)}">${favorite(recipe.name)?'★':'☆'}</button>`;}
+const WK_PANTRY_KEY='wochenkoch-vorrat-v1';
+let wkPantry=read(WK_PANTRY_KEY,{});
+if(!wkPantry || typeof wkPantry!=='object' || Array.isArray(wkPantry))wkPantry={};
+let wkShopGrouped=read('wochenkoch-gruppiert-v1',true);
+let wkBudgetActual=read('wochenkoch-istkosten-v1',null);
+let wkCookingRecipe=null;
+let wkAvoidRepeat=read('wochenkoch-vielfalt-v1',true);
+let wkHistory=read('wochenkoch-rezeptverlauf-v1',[]);
+if(!Array.isArray(wkHistory))wkHistory=[];
+const wkCategories=[['Obst & Gemüse',/apfel|äpfel|banane|tomat|paprika|karott|möhre|zwiebel|gurke|brokkoli|kartoff|salat|pilz|spinat|lauch|zitrone|avocado|beere|kürbis|mango|pflaume|süßkartoffel|wirsing/i],['Kühlregal & Eier',/milch|joghurt|quark|käse|butter|sahne|ei(er)?$|mozzarella|skyr|frischkäse|tofu|halloumi/i],['Fleisch & Fisch',/hähn|huhn|rind|schwein|pute|lachs|fisch|garnel|speck/i],['Tiefkühlkost',/tiefkühl|tk-/i],['Brot & Backwaren',/brot|brötchen|toast|ciabatta/i],['Vorrat & Sonstiges',/.*/]];
+function wkCategory(name){return wkCategories.find(([_,re])=>re.test(name))?.[0]||'Vorrat & Sonstiges';}
+function wkPantryAmount(key){return Math.max(0,Number(wkPantry[key])||0);}
+function wkSavePantry(){localStorage.setItem(WK_PANTRY_KEY,JSON.stringify(wkPantry));}
+function wkShoppingRaw(){const amounts={};state.plan.forEach(i=>{const r=recipes[i];if(r)Object.entries(r.items).forEach(([k,q])=>amounts[k]=(amounts[k]||0)+q*state.people);});return amounts;}
+function wkRecipeCost(r){return Object.entries(r.items).reduce((sum,[k,q])=>{const ing=ingredients[k];if(!ing)return sum;return sum+(q*state.people/ing.size)*(priceFor(k)??ing.price);},0);}
+function wkPlanBudgetTotal(){return total();}
+
 let shopFilter = 'all';
 let tab = 'home';
 
@@ -419,12 +436,14 @@ function shopping() {
   return Object.entries(amounts)
     .map(([key, amount]) => {
       const ingredient = ingredients[key];
-      const packs = Math.ceil(amount / ingredient.size);
+      const needed = Math.max(0, amount - wkPantryAmount(key));
+      const packs = Math.ceil(needed / ingredient.size);
       const custom = priceFor(key);
 
       return {
         key,
         amount,
+        needed,
         packs,
         cost: packs * (custom ?? ingredient.price),
         custom: custom !== null
@@ -451,7 +470,7 @@ function shopItems() {
         id: item.key,
         name: ingredients[item.key].name,
         detail:
-          `${item.amount} ${ingredients[item.key].unit} · ` +
+          `${item.amount} ${ingredients[item.key].unit}` + (wkPantryAmount(item.key)?` · Vorrat ${Math.min(item.amount,wkPantryAmount(item.key))} ${ingredients[item.key].unit}`:'') + ' · ' +
           `${item.packs} × ${ingredients[item.key].size} ` +
           ingredients[item.key].unit,
         priceLabel: priceOrigin(item.key)
@@ -477,7 +496,8 @@ function generate() {
     const used=new Set();
     const candidate=pools.map(pool=>{
       const options=pool.filter(i=>!used.has(i));
-      const choices=options.length?options:pool;
+      const fresh=wkAvoidRepeat?options.filter(i=>!wkHistory.includes(recipes[i].name)):options;
+      const choices=fresh.length?fresh:(options.length?options:pool);
       const index=choices[Math.floor(Math.random()*choices.length)];
       used.add(index);return index;
     });
@@ -690,6 +710,7 @@ function plan() {
         </div>
       </div>
 
+      <label class="wk-toggle"><input type="checkbox" id="wkAvoidRepeat" ${wkAvoidRepeat?'checked':''}> Kürzlich gekochte Gerichte seltener vorschlagen</label>
       <fieldset class="wk-meals"><legend>Mahlzeiten für alle 7 Tage</legend>
         ${MEALS.map(meal=>`<label style="display:block;padding:8px"><input type="checkbox" data-meal="${meal}" ${state.meals.includes(meal)?'checked':''}> ${MEAL_NAMES[meal]}</label>`).join('')}
       </fieldset>
@@ -729,11 +750,12 @@ function plan() {
               </div>
 
               <span class="small muted">
-                ${recipe.vegan?'Vegan':recipe.veg?'Vegetarisch':'Mit Fleisch'}
+                ${recipe.vegan?'Vegan':recipe.veg?'Vegetarisch':'Mit Fleisch'} · ca. ${money(wkRecipeCost(recipe))} ${wkHistory.includes(recipe.name)?'· Kürzlich gekocht':''}
               </span>
             </div>
 
             ${star(recipe)}
+            <button type="button" class="link" data-cook="${index}">Kochmodus</button>
             <button
               class="link"
               data-swap="${slotIndex}"
@@ -859,12 +881,15 @@ function shop() {
       Häkchen setzen zum Abhaken
     </p>
 
+    <label class="wk-toggle"><input id="wkGroupShop" type="checkbox" ${wkShopGrouped?'checked':''}> Nach Abteilungen sortieren</label>
     <div class="shop-list">
       ${visible.length
-        ? visible.map(item => {
+        ? (wkShopGrouped ? [...visible].sort((a,b)=>{const c=wkCategories.findIndex(([name])=>name===wkCategory(a.name))-wkCategories.findIndex(([name])=>name===wkCategory(b.name));return c||Number(!!state.checks[a.id])-Number(!!state.checks[b.id])||a.name.localeCompare(b.name,'de');}) : [...visible].sort((a,b)=>Number(!!state.checks[a.id])-Number(!!state.checks[b.id]))).map((item,itemIndex,ordered) => {
           const checked = !!state.checks[item.id];
 
-          return `
+          const group=wkShopGrouped?wkCategory(item.name):'';
+          const heading=wkShopGrouped && (itemIndex===0||wkCategory(ordered[itemIndex-1].name)!==group)?`<h3 class="wk-aisle">${esc(group)}</h3>`:'';
+          return `${heading}
             <div
               class="shop-swipe"
               data-swipe="${esc(item.id)}"
@@ -919,6 +944,8 @@ function shop() {
       }
     </div>
 
+    <section class="wk-feature card"><h2>Vorratsschrank</h2><p class="small muted">Trage die vorhandene Menge ein. Sie wird von der benötigten Einkaufsmenge abgezogen; die Rezepte bleiben unverändert.</p><div class="wk-pantry-grid">${Object.entries(ingredients).sort((a,b)=>a[1].name.localeCompare(b[1].name,'de')).map(([k,v])=>`<label><span>${esc(v.name)} (${esc(v.unit)})</span><input type="number" min="0" step="any" inputmode="decimal" data-pantry="${esc(k)}" value="${wkPantryAmount(k)||''}" placeholder="0"></label>`).join('')}</div><button class="btn alt" id="wkPantrySave">Vorrat speichern</button></section>
+    <section class="wk-feature card"><h2>Geplant vs. bezahlt</h2><p>Geplant: <strong>${money(total())}</strong></p><label>Tatsächlich bezahlt (€)<input id="wkActualCost" type="number" min="0" step="0.01" inputmode="decimal" value="${wkBudgetActual??''}" placeholder="Kassenbon-Gesamtbetrag"></label><button class="btn alt" id="wkActualSave">Betrag speichern</button>${wkBudgetActual!==null?`<p class="small">Differenz: ${money(wkBudgetActual-total())} (Ist minus Plan)</p>`:''}</section>
     <div class="shop-actions">
       <button class="btn alt" id="copy">
         Liste kopieren
@@ -1385,7 +1412,7 @@ function openSwapDialog(slotIndex){
     const query=(document.getElementById('wkSwapSearch')?.value||'').trim().toLocaleLowerCase('de');
     const onlyFavs=document.getElementById('wkSwapFavs')?.checked;
     const matches=recipes.map((r,i)=>({r,i})).filter(({r,i})=>i!==state.plan[slotIndex]&&allowedRecipe(r)&&mealMatch(r,slot.meal)&&(!onlyFavs||favorite(r.name))&&r.name.toLocaleLowerCase('de').includes(query));
-    document.getElementById('wkSwapResults').innerHTML=matches.slice(0,70).map(({r,i})=>`<button type="button" class="wk-swap-option" data-swap-pick="${slotIndex}" data-recipe-index="${i}"><span><strong>${esc(r.name)}</strong><small>${r.vegan?'Vegan':r.veg?'Vegetarisch':'Mit Fleisch'}</small></span><span>Auswählen →</span></button>`).join('')||'<p>Keine passenden Gerichte gefunden.</p>';
+    document.getElementById('wkSwapResults').innerHTML=matches.slice(0,70).map(({r,i})=>`<button type="button" class="wk-swap-option" data-swap-pick="${slotIndex}" data-recipe-index="${i}"><span><strong>${esc(r.name)}</strong><small>${r.vegan?'Vegan':r.veg?'Vegetarisch':'Mit Fleisch'}</small></span><span>${money(wkRecipeCost(r))} ca. · Auswählen →</span></button>`).join('')||'<p>Keine passenden Gerichte gefunden.</p>';
     if(matches.length>70)document.getElementById('wkSwapResults').insertAdjacentHTML('beforeend',`<p class="small muted">${matches.length} Treffer – bitte Suche verfeinern.</p>`);
   }
   overlay.querySelector('#wkSwapSearch').addEventListener('input',results);
@@ -1393,10 +1420,28 @@ function openSwapDialog(slotIndex){
   results();overlay.querySelector('#wkSwapSearch').focus();
 }
 
+function wkOpenCooking(index){
+  const r=recipes[index];if(!r)return;wkCookingRecipe=index;
+  document.getElementById('wkCookOverlay')?.remove();
+  const overlay=document.createElement('div');overlay.id='wkCookOverlay';overlay.className='wk-swap-overlay';
+  overlay.innerHTML=`<div class="wk-swap-dialog wk-cook-dialog" role="dialog" aria-modal="true" aria-label="Kochmodus"><div class="wk-cook-head"><h2>${esc(r.name)}</h2><button class="btn alt" id="wkCookClose">Schließen</button></div><p class="small muted">${state.people} Person(en) · ca. ${money(wkRecipeCost(r))} Zutatenkosten</p><h3>Zutaten</h3><ul>${Object.entries(r.items).map(([k,q])=>`<li>${esc(ingredients[k]?.name||k)}: ${q*state.people} ${esc(ingredients[k]?.unit||'')}</li>`).join('')}</ul><h3>Zubereitung</h3><p class="wk-cook-steps">${esc(r.steps)}</p><button class="btn" id="wkCookDone">Gekocht ✓</button></div>`;
+  document.body.appendChild(overlay);overlay.addEventListener('click',e=>{if(e.target===overlay)overlay.remove();});
+}
 document.addEventListener('click', async event => {
   const button = event.target.closest('button');
   if (!button) return;
 
+  if(button.id==='wkPantrySave'){
+    document.querySelectorAll('[data-pantry]').forEach(el=>{const v=Number(el.value);if(Number.isFinite(v)&&v>0)wkPantry[el.dataset.pantry]=v;else delete wkPantry[el.dataset.pantry];});wkSavePantry();render();toast('Vorrat gespeichert · Einkaufspreise aktualisiert');return;
+  }
+  if(button.id==='wkActualSave'){
+    const raw=document.getElementById('wkActualCost')?.value;wkBudgetActual=raw===''?null:Math.max(0,Number(raw)||0);localStorage.setItem('wochenkoch-istkosten-v1',JSON.stringify(wkBudgetActual));render();toast('Tatsächliche Kosten gespeichert');return;
+  }
+  if(button.dataset.cook!==undefined){wkOpenCooking(Number(button.dataset.cook));return;}
+  if(button.id==='wkCookClose'){document.getElementById('wkCookOverlay')?.remove();return;}
+  if(button.id==='wkCookDone'){
+    const r=recipes[wkCookingRecipe];if(r){wkHistory=[r.name,...wkHistory.filter(n=>n!==r.name)].slice(0,30);localStorage.setItem('wochenkoch-rezeptverlauf-v1',JSON.stringify(wkHistory));}document.getElementById('wkCookOverlay')?.remove();toast('Als gekocht gespeichert');return;
+  }
   if(button.dataset.favorite!==undefined){
     const name=button.dataset.favorite;
     favorites=favorite(name)?favorites.filter(n=>n!==name):[...favorites,name];
@@ -1696,6 +1741,8 @@ document.addEventListener('input',event=>{
   }
 });
 document.addEventListener('change', event => {
+  if(event.target.id==='wkGroupShop'){wkShopGrouped=event.target.checked;localStorage.setItem('wochenkoch-gruppiert-v1',JSON.stringify(wkShopGrouped));render();return;}
+  if(event.target.id==='wkAvoidRepeat'){wkAvoidRepeat=event.target.checked;localStorage.setItem('wochenkoch-vielfalt-v1',JSON.stringify(wkAvoidRepeat));return;}
   if(event.target.id==='libraryDiet'){libraryDiet=event.target.value;render();return;}
   if(event.target.id==='libraryCategory'){libraryCategory=event.target.value;render();return;}
   if(event.target.id==='libraryFavorites'){libraryFavorites=event.target.checked;render();return;}
