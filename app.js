@@ -353,7 +353,32 @@ function priceFor(key) {
     return Number(saved.price);
   }
 
-  return communityAverages[state.store + '|' + key]?.price ?? null;
+  const community = communityAverages[state.store + '|' + key]?.price;
+  if (community != null) return community;
+  return referencePrice(key)?.price ?? null;
+}
+
+function referencePrice(key) {
+  const dataset = window.WochenkochPreisreferenzen;
+  if (!dataset) return null;
+  const store = String(state.store || '').toUpperCase();
+  const ing = ingredients[key];
+  if (!ing) return null;
+  const today = new Date().toISOString().slice(0,10);
+  const offer = store === 'LIDL' ? dataset.lidlOffers?.[key] : null;
+  const row = offer && today >= offer.validFrom && today <= offer.validUntil
+    ? offer : dataset.reference?.[store + '|' + key];
+  if (!row || row.unit !== ing.unit || !Number.isFinite(row.pricePerUnit)) return null;
+  return {price: Math.round(row.pricePerUnit * ing.size * 100) / 100, row};
+}
+
+function priceOrigin(key) {
+  const saved = read('wochenkoch-prices-v2', {})[state.store + '|' + key];
+  if (saved && Number.isFinite(Number(saved.price)) && Number(saved.price)>=0) return 'Eigener Preis';
+  if (communityAverages[state.store + '|' + key]?.price != null) return 'Kassenbon-Durchschnitt';
+  const ref = referencePrice(key);
+  if (!ref) return 'Schätzwert';
+  return (ref.row.validUntil ? 'Lidl-Angebot bis ' + ref.row.validUntil : 'Open Prices · ' + ref.row.date) + (ref.row.assumed ? ' · Menge geschätzt' : '') + ' · Richtwert';
 }
 
 /* =====================================================
@@ -429,9 +454,7 @@ function shopItems() {
           `${item.amount} ${ingredients[item.key].unit} · ` +
           `${item.packs} × ${ingredients[item.key].size} ` +
           ingredients[item.key].unit,
-        priceLabel: item.custom
-          ? 'Preisbeobachtung'
-          : 'Schätzwert'
+        priceLabel: priceOrigin(item.key)
       })),
 
     ...shopExtras.map(item => ({
