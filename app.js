@@ -189,6 +189,7 @@ function slots() {return DAYS.flatMap((_,day)=>state.meals.map(meal=>({day,meal}
 function recipeCategory(recipe) {
   const c = recipe.category || '';
   if (c === 'Dessert') return 'dessert';
+  if (c === 'Frühstück') return 'breakfast';
   if (c === 'Snack & Frühstück') return /Frühstück|Overnight|Hafer-Bowl|Mini-Pfannkuchen/i.test(recipe.name)?'breakfast':'snack';
   if (/Porridge|Frühstück|Overnight|Rührei|Pfannkuchen|Joghurt-Snack/i.test(recipe.name)) return 'breakfast';
   return 'main';
@@ -367,7 +368,7 @@ function allowedRecipe(recipe) {
   if (
     state.diet === 'vegan' &&
     Object.keys(recipe.items).some(key =>
-      ['chicken', 'egg', 'cheese', 'milk', 'yogurt'].includes(key)
+      ['chicken','turkey','beef','pork','salmon','cod','shrimp','egg','cheese','milk','yogurt','honey','cream','mozzarella','parmesan','halloumi','quark','skyr','butter','yogurt_sauce','tzatziki'].includes(key)
     )
   ) {
     return false;
@@ -686,7 +687,10 @@ function plan() {
       if (!recipe) return '';
 
       return `
-        <div class="card">
+        ${slotIndex===0 || slots()[slotIndex-1]?.day!==slot.day ? `
+          <div class="wk-day-header"><span class="wk-day-number">${slot.day+1}</span><div><strong>${DAYS[slot.day]}</strong><div class="small muted">${state.meals.length} Mahlzeit${state.meals.length===1?'':'en'}</div></div></div>
+        ` : ''}
+        <div class="card wk-meal-card">
           <div class="recipe">
             <div class="recipe-art">
               ${ICONS[index % ICONS.length]}
@@ -710,8 +714,8 @@ function plan() {
             <button
               class="link"
               data-swap="${slotIndex}"
-              aria-label="Gericht tauschen"
-            >↻</button>
+              aria-label="Gericht gezielt austauschen"
+            >Tauschen ↻</button>
           </div>
 
           <details class="expand">
@@ -1274,7 +1278,7 @@ function library(){
   const shown=recipes.filter(r=>{
     if(!allowedRecipe(r))return false;
     if(libraryFavorites&&!favorite(r.name))return false;
-    if(libraryDiet==='vegan'&&!r.vegan&&Object.keys(r.items).some(k=>['chicken','egg','cheese','milk','yogurt'].includes(k)))return false;
+    if(libraryDiet==='vegan'&&!r.vegan&&Object.keys(r.items).some(k=>['chicken','turkey','beef','pork','salmon','cod','shrimp','egg','cheese','milk','yogurt','honey','cream','mozzarella','parmesan','halloumi','quark','skyr','butter','yogurt_sauce','tzatziki'].includes(k)))return false;
     if(libraryDiet==='vegetarian'&&!r.veg)return false;
     if(libraryDiet==='meat'&&r.veg)return false;
     if(libraryCategory!=='all'&&recipeCategory(r)!==libraryCategory)return false;
@@ -1341,6 +1345,31 @@ function removeShopItem(id) {
    BUTTONS UND KLICKS
    ===================================================== */
 
+function openSwapDialog(slotIndex){
+  const slot=slots()[slotIndex];if(!slot)return;
+  document.getElementById('wkSwapOverlay')?.remove();
+  const overlay=document.createElement('div');overlay.id='wkSwapOverlay';
+  overlay.className='wk-swap-overlay';
+  overlay.innerHTML=`<div class="wk-swap-dialog" role="dialog" aria-modal="true" aria-label="Gericht tauschen">
+    <div class="row"><div><h2>${DAYS[slot.day]} · ${MEAL_NAMES[slot.meal]}</h2><p class="small muted">Wähle ein anderes Gericht. Einkaufsliste und Preise werden neu berechnet.</p></div><button id="wkSwapClose" class="btn alt">✕</button></div>
+    <label>Gericht suchen<input id="wkSwapSearch" type="search" placeholder="Rezeptname eingeben…" autocomplete="off"></label>
+    <label><input id="wkSwapFavs" type="checkbox"> Nur Favoriten ⭐</label>
+    <div id="wkSwapResults" class="wk-swap-results"></div>
+  </div>`;
+  document.body.appendChild(overlay);
+  overlay.addEventListener('click',e=>{if(e.target===overlay)overlay.remove();});
+  function results(){
+    const query=(document.getElementById('wkSwapSearch')?.value||'').trim().toLocaleLowerCase('de');
+    const onlyFavs=document.getElementById('wkSwapFavs')?.checked;
+    const matches=recipes.map((r,i)=>({r,i})).filter(({r,i})=>i!==state.plan[slotIndex]&&allowedRecipe(r)&&mealMatch(r,slot.meal)&&(!onlyFavs||favorite(r.name))&&r.name.toLocaleLowerCase('de').includes(query));
+    document.getElementById('wkSwapResults').innerHTML=matches.slice(0,70).map(({r,i})=>`<button type="button" class="wk-swap-option" data-swap-pick="${slotIndex}" data-recipe-index="${i}"><span><strong>${esc(r.name)}</strong><small>${r.vegan?'Vegan':r.veg?'Vegetarisch':'Mit Fleisch'}</small></span><span>Auswählen →</span></button>`).join('')||'<p>Keine passenden Gerichte gefunden.</p>';
+    if(matches.length>70)document.getElementById('wkSwapResults').insertAdjacentHTML('beforeend',`<p class="small muted">${matches.length} Treffer – bitte Suche verfeinern.</p>`);
+  }
+  overlay.querySelector('#wkSwapSearch').addEventListener('input',results);
+  overlay.querySelector('#wkSwapFavs').addEventListener('change',results);
+  results();overlay.querySelector('#wkSwapSearch').focus();
+}
+
 document.addEventListener('click', async event => {
   const button = event.target.closest('button');
   if (!button) return;
@@ -1386,24 +1415,26 @@ document.addEventListener('click', async event => {
   }
 
   if (button.dataset.swap !== undefined) {
-    const dayIndex = Number(button.dataset.swap);
-
-    const pool = recipes
-      .map((recipe, index) => index)
-      .filter(index =>
-        index !== state.plan[dayIndex] &&
-        allowedRecipe(recipes[index]) && mealMatch(recipes[index],slots()[dayIndex]?.meal)
-      );
-
-    if (pool.length) {
-      state.plan[dayIndex] =
-        pool[Math.floor(Math.random() * pool.length)];
-    }
-
-    state.checks = {};
-    save();
-    render();
+    openSwapDialog(Number(button.dataset.swap));
     return;
+  }
+  if (button.dataset.swapPick !== undefined) {
+    const slotIndex=Number(button.dataset.swapPick);
+    const newIndex=Number(button.dataset.recipeIndex);
+    if(!Number.isInteger(slotIndex)||!Number.isInteger(newIndex))return;
+    const target=slots()[slotIndex];
+    if(!target || !recipes[newIndex] || !allowedRecipe(recipes[newIndex]) || !mealMatch(recipes[newIndex],target.meal))return;
+    const before=total();
+    state.plan[slotIndex]=newIndex;
+    state.checks={};shopHidden=[];
+    saveShop();save();
+    document.getElementById('wkSwapOverlay')?.remove();
+    render();
+    toast('Gericht getauscht · Neuer Einkaufswert: '+money(total())+' (vorher '+money(before)+')');
+    return;
+  }
+  if (button.id === 'wkSwapClose') {
+    document.getElementById('wkSwapOverlay')?.remove();return;
   }
 
   if (button.id === 'signUp' || button.id === 'signIn') {

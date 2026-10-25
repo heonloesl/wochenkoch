@@ -1,0 +1,10 @@
+/* Wochenkoch – deutliche Trennung der Tage und Rezepttausch */
+.wk-day-header{display:flex;align-items:center;gap:14px;margin:30px 0 12px;padding:15px 18px;border-radius:16px;background:#e7efe4;border:1px solid #cadfc6;color:#214a30}
+.wk-day-header strong{font-size:1.2rem}.wk-day-number{display:grid;place-items:center;width:40px;height:40px;border-radius:50%;background:#245a39;color:white;font-weight:800}
+.wk-meal-card{margin:0 0 12px 12px;border-left:5px solid #8ebd8e}.wk-meal-card .recipe-day{font-weight:750;color:#245a39}
+.wk-swap-overlay{position:fixed;inset:0;z-index:5000;background:rgba(10,20,15,.64);display:flex;justify-content:center;align-items:center;padding:14px}
+.wk-swap-dialog{background:white;border-radius:18px;padding:18px;width:min(620px,100%);max-height:90vh;overflow:auto;box-shadow:0 12px 60px #0003}
+.wk-swap-dialog h2{font-size:1.2rem;margin:0}.wk-swap-dialog input[type=search]{width:100%;margin:8px 0 14px;padding:12px;border:1px solid #aaa;border-radius:9px}
+.wk-swap-results{max-height:53vh;overflow:auto;margin-top:10px}.wk-swap-option{width:100%;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:13px 8px;border:0;border-bottom:1px solid #ddd;background:white;text-align:left;cursor:pointer;color:#24382a}
+.wk-swap-option:hover,.wk-swap-option:focus{background:#eff5ee}.wk-swap-option small{display:block;color:#666;margin-top:4px}
+@media(max-width:480px){.wk-day-header{margin-top:23px}.wk-meal-card{margin-left:4px}.wk-swap-dialog{padding:13px}}
